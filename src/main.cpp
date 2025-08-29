@@ -38,6 +38,7 @@ EM_JS(void, print, (const char *string),
 #include "imguiThemes.h"
 #include "rlImGui.h"
 ImGuiIO *g_io = nullptr;
+
 #pragma endregion
 
 int width = 1280;
@@ -47,13 +48,16 @@ Font g_font;
 Rectangle mouseCollider{0U, 0U, 15U, 15U};
 Vector2 mouseWorldPos = {0, 0};
 void UpdateDrawFrame(void);
+void renderScene();
 
+const char *interaction_mode_string[] = {"all", "Node Select", "Node Create",
+                                         "Edge Create", "Edge Edit"};
 enum class InteractionMode {
-  None, // can hover and delete
-  NodeSelect,
-  NodeCreate,
-  EdgeCreate,
-  EdgeEdit,
+  None = 0, // can hover and delete
+  NodeSelect = 1,
+  NodeCreate = 2,
+  EdgeCreate = 3,
+  EdgeEdit = 4,
 };
 InteractionMode g_mode = InteractionMode::None;
 bool im_gui_g_mode_pesist = false;
@@ -92,174 +96,8 @@ Node *root = nullptr;
 
 Node *selectedNode = nullptr;
 Node *selectedNodeOrigin = nullptr;
-
-/**
- * Helper functions.
- * */
-bool IsMouseHoveringEdge(const Vector2 &mouse, const Vector2 &p1,
-                         const Vector2 &p2, float thickness = 5.0f) {
-  // Vector from p1 to p2
-  Vector2 edge = Vector2Subtract(p2, p1);
-  Vector2 mouseVec = Vector2Subtract(mouse, p1);
-
-  float edgeLenSq = Vector2LengthSqr(edge);
-  if (edgeLenSq == 0.0f)
-    return false;
-
-  // Project mouseVec onto edge (clamped to [0,1])
-  float t = Vector2DotProduct(mouseVec, edge) / edgeLenSq;
-  t = Clamp(t, 0.0f, 1.0f);
-
-  // Closest point on the edge
-  Vector2 closest = Vector2Add(p1, Vector2Scale(edge, t));
-
-  // Distance from mouse to closest point
-  float dist = Vector2Distance(mouse, closest);
-  return dist <= thickness;
-}
-
-int main(void) {
-
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  g_font = LoadFont("./resources/font/alpha_beta.png");
-#if defined(PLATFORM_WEB)
-  printf("%d", canvas_set_size());
-
-  emscripten_get_canvas_element_size("#canvas", &width, &height);
-// printf("%d", width);
-#endif
-
-  InitWindow(width, height, "Algorithm Visualizer - raylib");
-  Node newNode;
-  newNode.radius = 15;
-
-  newNode.pos = {(float)(width / 2), (float)(height / 2)};
-  newNode.collider = {newNode.pos.x - newNode.radius,
-                      newNode.pos.y - newNode.radius, (float)newNode.radius * 2,
-                      (float)newNode.radius * 2};
-  newNode.data = 0;
-
-  nodes.push_back(newNode);
-  root = &nodes[0];
-
-#pragma region imgui
-  rlImGuiSetup(true);
-
-  imguiThemes::green();
-
-  // ImGuiIO &io = ImGui::GetIO(); (void)io;
-
-  g_io = &ImGui::GetIO();
-  g_io->ConfigFlags |=
-      ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-  g_io->ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
-  g_io->FontGlobalScale = 2;
-
-  ImGuiStyle &style = ImGui::GetStyle();
-  if (g_io->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    // style.WindowRounding = 0.0f;
-    style.Colors[ImGuiCol_WindowBg].w = 0.5f;
-    // style.Colors[ImGuiCol_DockingEmptyBg].w = 0.f;
-  }
-
-#pragma endregion
-
-  g_camera.zoom = 1.0f;
-#if defined(PLATFORM_WEB)
-  emscripten_get_canvas_element_size("#canvas", &width, &height);
-
-  emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
-#else
-  SetTargetFPS(60);
-
-  // Main game loop
-  while (!WindowShouldClose()) // Detect window close button or ESC key
-  {
-    UpdateDrawFrame();
-  }
-#endif
-
-#pragma region imgui
-  rlImGuiShutdown();
-#pragma endregion
-
-  CloseWindow();
-
-  return 0;
-}
-
-void UpdateDrawFrame(void) {
-
-  // Update window dimensions
-#if defined(PLATFORM_WEB)
-  emscripten_get_canvas_element_size("#canvas", &width, &height);
-#elif defined(PLATFORM_DESKTOP)
-  width = GetScreenWidth();
-  height = GetScreenHeight();
-#endif
-
-  // Calculate coordinates, sizes before drawing anything.
-  if (!g_io->WantCaptureMouse) {
-    HandleInput();
-
-    mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), g_camera);
-
-    float wheel = GetMouseWheelMove();
-    if (wheel != 0) {
-      // Get the world point that is under the mouse
-
-      g_camera.offset = GetMousePosition();
-
-      // Set the target to match, so that the camera maps the world space point
-      // under the cursor to the screen space point under the cursor at any zoom
-      g_camera.target = mouseWorldPos;
-
-      // Uses log scaling to provide consistent zoom speed
-      float scale = 0.2f * wheel;
-      g_camera.zoom = Clamp(expf(logf(g_camera.zoom) + scale), 0.125f, 64.0f);
-    }
-    mouseCollider.x = mouseWorldPos.x - mouseCollider.width / 2;
-    mouseCollider.y = mouseWorldPos.y - mouseCollider.height / 2;
-  }
-  BeginDrawing();
-
-  ClearBackground(RAYWHITE);
-
-  BeginMode2D(g_camera);
-
-  /*if (!g_io->WantCaptureMouse) {
-    DrawRectangleRec(mouseCollider, BLUE);
-  }*/
-  for (size_t i = 0; i < edges.size(); i++) {
-    Color col = (i == hoveredEdgeIndex) ? RED : DARKGRAY;
-    DrawLineEx(nodes[edges[i].from].pos, nodes[edges[i].to].pos, 3, col);
-  }
-  if (selectedNodeOrigin != nullptr) {
-    DrawLineEx(selectedNodeOrigin->pos,
-               GetScreenToWorld2D(GetMousePosition(), g_camera), 3, RED);
-  }
-
-  for (size_t i = 0; i < nodes.size(); i++) {
-    DrawCircleV(nodes[i].pos, nodes[i].radius,
-                (selectedNode == &nodes[i]) ? BLUE
-                : (root == &nodes[i])       ? GOLD
-                                            : RED);
-
-    // DrawCircleLines(nodes[i].pos.x, nodes[i].pos.y, nodes[i].radius,
-    // BLACK); DrawRectangleRec(nodes[i].collider, YELLOW);
-    char idText[10];
-    sprintf(idText, "%d", (int)i);
-    Vector2 textSize = MeasureTextEx(GetFontDefault(), idText, 20, 1);
-    // DrawText(idText, nodes[i].pos.x - textSize.x / 2,
-    //        nodes[i].pos.y - textSize.y / 2, 20, WHITE);
-    DrawTextEx(GetFontDefault(), idText, nodes[i].pos - (textSize / 2), 20.0f,
-               1.0f, WHITE);
-  }
-
-  EndMode2D();
-  DrawTextEx(GetFontDefault(), "Algorithm Visualizer",
-             {width / 2.0f - 150.0f, 100.0f}, 20.0f, 1.0f, LIGHTGRAY);
-
+size_t hoveredNodeIdx = SIZE_MAX;
+void drawUI() {
 #pragma region imgui
   rlImGuiBegin();
 
@@ -269,7 +107,6 @@ void UpdateDrawFrame(void) {
   ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
   ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
   ImGui::PopStyleColor(2);
-
   if (ImGui::Begin("Algorithm Visualizer")) {
     ImGui::Text("Settings");
 
@@ -280,6 +117,13 @@ void UpdateDrawFrame(void) {
 #endif
 
     if (algorithmState == AlgorithmState::Idle) {
+
+      Vector2 textSize = MeasureTextEx(
+          GetFontDefault(), interaction_mode_string[(int)g_mode], 20, 1);
+
+      DrawTextEx(GetFontDefault(), interaction_mode_string[(int)g_mode],
+                 {width / 2.0f - (textSize.x / 2), 50 - (textSize.y / 2)},
+                 20.0f, 1.0f, RED);
 
       if (IsKeyPressed(KEY_A) || ImGui::Button("Add Node")) {
         g_mode = InteractionMode::NodeSelect;
@@ -297,6 +141,49 @@ void UpdateDrawFrame(void) {
           nodes.push_back(newNode);
           selectedNode = &nodes.back();
         }
+      }
+
+      if (ImGui::BeginTable("adjacency", nodes.size() + 1,
+                            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        // Setup columns
+        ImGui::TableSetupColumn(" ");
+        for (size_t j = 0; j < nodes.size(); j++) {
+          char buf[32];
+          sprintf(buf, "N%zu", j);
+          ImGui::TableSetupColumn(buf);
+        }
+        ImGui::TableHeadersRow();
+
+        // Fill rows
+        for (size_t i = 0; i < nodes.size(); i++) {
+          ImGui::TableNextRow();
+
+          // Row header
+          ImGui::TableSetColumnIndex(0);
+          ImGui::Text("N%zu", i);
+          if (ImGui::IsItemHovered()) {
+            hoveredNodeIdx = i;
+          }
+          for (size_t j = 0; j < nodes.size(); j++) {
+            ImGui::TableSetColumnIndex(j + 1);
+            if (ImGui::IsItemHovered()) {
+              // hoveredNodeIdx = j+1;
+            }
+
+            // Check if edge (i -> j) exists
+            bool connected = false;
+            for (auto &e : edges) {
+              if ((e.from == i && e.to == j) || (e.from == j && e.to == i)) {
+                connected = true;
+                break;
+              }
+            }
+
+            ImGui::Text("%d", connected ? 1 : 0);
+          }
+        }
+
+        ImGui::EndTable();
       }
     }
 
@@ -336,10 +223,180 @@ void UpdateDrawFrame(void) {
 
   rlImGuiEnd();
 #pragma endregion
+}
 
+/**
+ * Helper functions.
+ * */
+bool IsMouseHoveringEdge(const Vector2 &mouse, const Vector2 &p1,
+                         const Vector2 &p2, float thickness = 5.0f) {
+  // Vector from p1 to p2
+  Vector2 edge = Vector2Subtract(p2, p1);
+  Vector2 mouseVec = Vector2Subtract(mouse, p1);
+
+  float edgeLenSq = Vector2LengthSqr(edge);
+  if (edgeLenSq == 0.0f)
+    return false;
+
+  // Project mouseVec onto edge (clamped to [0,1])
+  float t = Vector2DotProduct(mouseVec, edge) / edgeLenSq;
+  t = Clamp(t, 0.0f, 1.0f);
+
+  // Closest point on the edge
+  Vector2 closest = Vector2Add(p1, Vector2Scale(edge, t));
+
+  // Distance from mouse to closest point
+  float dist = Vector2Distance(mouse, closest);
+  return dist <= thickness;
+}
+
+/**
+ * Init functions
+ * */
+
+bool initWindow();
+bool initImGui();
+
+bool initWindow() {
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+  g_font = LoadFont("./resources/font/alpha_beta.png");
+#if defined(PLATFORM_WEB)
+  printf("%d", canvas_set_size());
+
+  emscripten_get_canvas_element_size("#canvas", &width, &height);
+#endif
+
+  InitWindow(width, height, "Algorithm Visualizer - raylib");
+  Node newNode;
+  newNode.radius = 15;
+
+  newNode.pos = {(float)(width / 2), (float)(height / 2)};
+  newNode.collider = {newNode.pos.x - newNode.radius,
+                      newNode.pos.y - newNode.radius, (float)newNode.radius * 2,
+                      (float)newNode.radius * 2};
+  newNode.data = 0;
+
+  nodes.push_back(newNode);
+  root = &nodes[0];
+
+  return true;
+}
+bool initImGui() {
+#pragma region imgui
+  rlImGuiSetup(true);
+
+  imguiThemes::green();
+
+  // ImGuiIO &io = ImGui::GetIO(); (void)io;
+
+  g_io = &ImGui::GetIO();
+  g_io->ConfigFlags |=
+      ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+  g_io->ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Enable Docking
+  g_io->FontGlobalScale = 2;
+
+  ImGuiStyle &style = ImGui::GetStyle();
+  if (g_io->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+    // style.WindowRounding = 0.0f;
+    style.Colors[ImGuiCol_WindowBg].w = 0.5f;
+    // style.Colors[ImGuiCol_DockingEmptyBg].w = 0.f;
+  }
+
+#pragma endregion
+  return true;
+}
+
+int main(void) {
+
+  initWindow();
+  initImGui();
+  g_camera.zoom = 1.0f;
+#if defined(PLATFORM_WEB)
+  emscripten_get_canvas_element_size("#canvas", &width, &height);
+
+  emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+#else
+  SetTargetFPS(60);
+
+  // Main game loop
+  while (!WindowShouldClose()) // Detect window close button or ESC key
+  {
+    UpdateDrawFrame();
+  }
+#endif
+
+#pragma region imgui
+  rlImGuiShutdown();
+#pragma endregion
+
+  CloseWindow();
+
+  return 0;
+}
+
+void UpdateDrawFrame(void) {
+
+  // Update window dimensions
+#if defined(PLATFORM_WEB)
+  emscripten_get_canvas_element_size("#canvas", &width, &height);
+#elif defined(PLATFORM_DESKTOP)
+  width = GetScreenWidth();
+  height = GetScreenHeight();
+#endif
+
+  // Calculate coordinates, sizes before drawing anything.
+  if (!g_io->WantCaptureMouse) {
+    hoveredNodeIdx = SIZE_MAX;
+    HandleInput();
+
+    mouseCollider.x = mouseWorldPos.x - mouseCollider.width / 2;
+    mouseCollider.y = mouseWorldPos.y - mouseCollider.height / 2;
+  }
+  BeginDrawing();
+
+  ClearBackground(RAYWHITE);
+
+  renderScene();
+  Vector2 textSize =
+      MeasureTextEx(GetFontDefault(), "Algorithm Visualizer", 30, 2);
+  DrawTextEx(GetFontDefault(), "Algorithm Visualizer",
+             {width / 2.0f - (textSize.x / 2), 20.0f - (textSize.y / 2)}, 30.0f,
+             2.0f, LIGHTGRAY);
+
+  drawUI();
   EndDrawing();
 }
 
+void renderScene() {
+  BeginMode2D(g_camera);
+
+  for (size_t i = 0; i < edges.size(); i++) {
+    Color col = (i == hoveredEdgeIndex) ? RED : DARKGRAY;
+    DrawLineEx(nodes[edges[i].from].pos, nodes[edges[i].to].pos, 3, col);
+  }
+  if (selectedNodeOrigin != nullptr) {
+    DrawLineEx(selectedNodeOrigin->pos,
+               GetScreenToWorld2D(GetMousePosition(), g_camera), 3, RED);
+  }
+
+  for (size_t i = 0; i < nodes.size(); i++) {
+    DrawCircleV(nodes[i].pos, nodes[i].radius,
+                hoveredNodeIdx == i           ? GREEN
+                : (selectedNode == &nodes[i]) ? BLUE
+                : (root == &nodes[i])         ? GOLD
+                                              : RED);
+
+    char idText[10];
+    sprintf(idText, "%d", (int)i);
+    Vector2 textSize = MeasureTextEx(GetFontDefault(), idText, 20, 1);
+    // DrawText(idText, nodes[i].pos.x - textSize.x / 2,
+    //        nodes[i].pos.y - textSize.y / 2, 20, WHITE);
+    DrawTextEx(GetFontDefault(), idText, nodes[i].pos - (textSize / 2), 20.0f,
+               1.0f, WHITE);
+  }
+
+  EndMode2D();
+}
 #pragma region handling_input
 void HandleInput(void) {
 
@@ -521,15 +578,32 @@ void HandleInput(void) {
       }
     }
 
-    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-      Vector2 delta = GetMouseDelta();
-      delta = Vector2Scale(delta, -1.0f / g_camera.zoom);
-      g_camera.target = Vector2Add(g_camera.target, delta);
-    }
-
     break;
   }
 
+  // camera controls
+  if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    Vector2 delta = GetMouseDelta();
+    delta = Vector2Scale(delta, -1.0f / g_camera.zoom);
+    g_camera.target = Vector2Add(g_camera.target, delta);
+  }
+  mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), g_camera);
+
+  float wheel = GetMouseWheelMove();
+  if (wheel != 0) {
+    // Get the world point that is under the mouse
+
+    g_camera.offset = GetMousePosition();
+
+    g_camera.target = mouseWorldPos;
+
+    // Uses log scaling to provide consistent zoom speed
+    float scale = 0.2f * wheel;
+
+    g_camera.zoom = Clamp(expf(logf(g_camera.zoom) + scale), 0.125f, 64.0f);
+  }
+
+  // reset
   if (IsKeyPressed(KEY_ESCAPE)) {
     g_mode = InteractionMode::None;
     if (selectedNode != nullptr) {
