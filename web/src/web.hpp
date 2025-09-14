@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 extern void toggle_console();
-extern float canvas_set_size();
+extern int canvas_set_size();
 extern void print_float(float string);
 extern void print(const char *string);
 
