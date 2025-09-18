@@ -3,6 +3,9 @@
 #include "raylib.h"
 #include "state.hpp"
 #include <memory>
+#if defined(PLATFORM_WEB)
+#include "web.h"
+#endif
 
 class App {
   static App *instance;

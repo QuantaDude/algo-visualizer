@@ -1,8 +1,5 @@
 #pragma once
 #include "state.hpp"
-#if defined(PLATFORM_WEB)
-#include <web.hpp>
-#endif
 
 class Menu : public AV::State {
   const char *m_title;

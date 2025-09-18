@@ -2,6 +2,9 @@
 #include "menu.hpp"
 #include "app.hpp"
 #include "raylib.h"
+#if defined(PLATFORM_WEB)
+#include <emscripten/html5.h>
+#endif
 
 void Menu::Init() {
   // set labels, other text, maybe theme

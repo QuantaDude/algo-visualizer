@@ -1,25 +1,28 @@
 #pragma once
+#if defined(PLATFORM_WEB)
+#include <emscripten.h>
+#include <emscripten/html5.h>
+#endif
 #include "app.hpp"
 #include "menu.hpp"
 #include "state.hpp"
 #include <memory>
-#include <utility>
 
 App *App::instance = nullptr;
 App &App::createInstance(int width, int height) {
   if (instance == nullptr) {
-    instance = new App(width, height,
-                       RESOURCES_PATH "./resources/font/alpha_beta.png");
+    if (emscriten_run_preload_plugins()) {
+    }
+    instance = new App(width, height, "resources/font/alpha_beta.png");
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     instance->setState(std::make_unique<Menu>("MENU"));
 #if defined(PLATFORM_WEB)
-    canvas_set_size();
-
+    call_canvas();
     emscripten_get_canvas_element_size("#canvas", &width, &height);
 #endif
 
     InitWindow(width, height, "Algorithm Visualizer");
-    GuiLoadStyle(RESOURCES_PATH "style_amber.rgs");
+    GuiLoadStyle("resources/style_amber.rgs");
   }
   return *instance;
 }

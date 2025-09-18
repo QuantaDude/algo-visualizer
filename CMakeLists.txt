@@ -39,9 +39,13 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} \
         -s EXIT_RUNTIME=0 \
         -s ASSERTIONS=0 \
-        --shell-file ${CMAKE_SOURCE_DIR}/src/shell.html")
+        --shell-file ${CMAKE_SOURCE_DIR}/src/shell.html
+        --preload-file ${CMAKE_SOURCE_DIR}/resources")
 
-    set(CMAKE_EXECUTABLE_SUFFIX ".html")
+      # -s EXPORTED_FUNCTIONS='[\"_main\", \"_canvas_set_size\", \"_toggle_console\", \"_print_float\", \"_print\"]' \
+      # -s EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")    
+
+        set(CMAKE_EXECUTABLE_SUFFIX ".html")
 
     execute_process(COMMAND em++ --cflags OUTPUT_VARIABLE EM_CFLAGS)
     string(STRIP "${EM_CFLAGS}" EM_CFLAGS)
@@ -70,7 +74,7 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
     if(EMSCRIPTEN)
-        add_compile_options(-mavx2 -msimd128)
+      #add_compile_options(-mavx2 -msimd128)
         if(CMAKE_BUILD_TYPE STREQUAL "Release")
             add_compile_options(-O3 -flto -ftree-vectorize)
         endif()
@@ -86,7 +90,7 @@ endif()
 # DEPENDENCIES
 # -------------------------------
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build Raylib as static libraries" FORCE)
-add_subdirectory(web)
+# add_subdirectory(web)
 add_subdirectory(thirdparty/raylib-5.5)
 add_subdirectory(thirdparty/imgui-docking)
 add_subdirectory(thirdparty/rlImGui)
@@ -95,7 +99,7 @@ add_subdirectory(thirdparty/raygui)
 # -------------------------------
 # SOURCES
 # -------------------------------
-file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*")
 
 # -------------------------------
 # EXECUTABLE
@@ -132,12 +136,12 @@ endif()
 target_include_directories("${PROJECT_NAME}" PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include/"
   "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/raygui" "${CMAKE_CURRENT_SOURCE_DIR}/web/src" 
 )
-if(EMSCRIPTEN)
-    target_link_libraries("${PROJECT_NAME}" PRIVATE web)
-    target_include_directories("${PROJECT_NAME}" PUBLIC web/src)
+#if(EMSCRIPTEN)
+#   target_link_libraries("${PROJECT_NAME}" PRIVATE web)
+#   target_include_directories("${PROJECT_NAME}" PUBLIC web/src)
 
-  endif()
-target_link_libraries("${PROJECT_NAME}" PRIVATE raylib_static imgui rlimgui raygui web)
+# endif()
+target_link_libraries("${PROJECT_NAME}" PRIVATE raylib_static imgui rlimgui raygui)
 
 if(MSVC)
     target_compile_definitions("${PROJECT_NAME}" PUBLIC _CRT_SECURE_NO_WARNINGS)
