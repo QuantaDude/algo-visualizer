@@ -39,8 +39,9 @@ if(EMSCRIPTEN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} \
         -s EXIT_RUNTIME=0 \
         -s ASSERTIONS=0 \
-        --shell-file ${CMAKE_SOURCE_DIR}/src/shell.html
-        --preload-file ${CMAKE_SOURCE_DIR}/resources")
+        --shell-file ${CMAKE_SOURCE_DIR}/src/shell.html \
+        --preload-file ${CMAKE_SOURCE_DIR}/resources@/resources
+        --use-preload-plugins")
 
       # -s EXPORTED_FUNCTIONS='[\"_main\", \"_canvas_set_size\", \"_toggle_console\", \"_print_float\", \"_print\"]' \
       # -s EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")    
@@ -100,7 +101,9 @@ add_subdirectory(thirdparty/raygui)
 # SOURCES
 # -------------------------------
 file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*")
-
+if (NOT EMSCRIPTEN)
+  list(FILTER MY_SOURCES EXCLUDE REGEX "src/web.c$")
+endif()
 # -------------------------------
 # EXECUTABLE
 # -------------------------------

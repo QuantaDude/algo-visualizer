@@ -204,6 +204,9 @@ jwE50AGjLCVuS8Yt4H7OgZLKK5EKOsLviEWJSL/+0uMi7gLUSBseYwqEbXvSHCec1CJvZPyHCmYQffaB
         var Module = {
             preRun: [],
             postRun: [],
+            onAbort: function(){
+              window.close();
+            },
             print: (function() {
                 var element = document.querySelector('#output');
 

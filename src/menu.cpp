@@ -1,13 +1,20 @@
 #pragma once
 #include "menu.hpp"
-#include "app.hpp"
+#include "raygui.h"
 #include "raylib.h"
 #if defined(PLATFORM_WEB)
 #include <emscripten/html5.h>
 #endif
 
+Menu::Menu(const char *title)
+    : m_title(title), m_font(App::getInstance().getDefaultFont()) {}
+
 void Menu::Init() {
   // set labels, other text, maybe theme
+
+  GuiSetFont(App::getInstance().getDefaultFont());
+  GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
+  // GuiSetState(STATE_FOCUSED);
 }
 
 void Menu::Draw(IVector2 *resolution) {
@@ -21,11 +28,10 @@ void Menu::Draw(IVector2 *resolution) {
 
   BeginDrawing();
 
-  ClearBackground(RAYWHITE);
-  Vector2 textSize =
-      MeasureTextEx(GetFontDefault(), "Algorithm Visualizer", 30, 2);
+  ClearBackground({41, 41, 41, 100});
+  Vector2 textSize = MeasureTextEx(m_font, m_title, 30, 2);
   DrawTextEx(
-      GetFontDefault(), "Algorithm Visualizer",
+      m_font, m_title,
       {resolution->x / 2.0f - (textSize.x / 2), 20.0f - (textSize.y / 2)},
       30.0f, 2.0f, LIGHTGRAY);
 
@@ -34,17 +40,18 @@ void Menu::Draw(IVector2 *resolution) {
 }
 
 void Menu::DrawUI(IVector2 resolution) {
-  GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
   // Draw raylib menus, buttons, labels
   if (GuiButton((Rectangle){static_cast<float>((resolution.x / 2) - 60),
                             static_cast<float>(resolution.y - 500), 320, 130},
                 "Start"))
     startScene = true;
-
+  // #ifndef PLATFORM_WEB
   if (GuiButton((Rectangle){static_cast<float>((resolution.x / 2) - 60),
                             static_cast<float>(resolution.y - 300), 320, 130},
                 "Quit")) {
+    App::getInstance().setState(AV::QUIT);
   }
+  // #endif
 }
 
 void Menu::Update() {

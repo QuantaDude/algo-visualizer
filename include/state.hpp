@@ -1,7 +1,7 @@
 #pragma once
 #include "utils.hpp"
 namespace AV {
-enum class AppState { MENU = 0, SCENE };
+typedef enum { MENU = 0, SCENE, QUIT } AppState;
 enum class AlgorithmState { Idle, Stepping, Running, Done };
 
 class State {
