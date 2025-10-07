@@ -1,0 +1,226 @@
+#include "utils.hpp"
+#include "raylib.h"
+const char *GetKeyNameCustom(int key) {
+  switch (key) {
+  case KEY_APOSTROPHE:
+    return "'";
+  case KEY_COMMA:
+    return ",";
+  case KEY_KP_SUBTRACT:
+  case KEY_MINUS:
+    return "-";
+  case KEY_PERIOD:
+    return ".";
+  case KEY_KP_DIVIDE:
+  case KEY_SLASH:
+    return "/";
+  case KEY_ZERO:
+    return "0";
+  case KEY_ONE:
+    return "1";
+  case KEY_TWO:
+    return "2";
+  case KEY_THREE:
+    return "3";
+  case KEY_FOUR:
+    return "4";
+  case KEY_FIVE:
+    return "5";
+  case KEY_SIX:
+    return "6";
+  case KEY_SEVEN:
+    return "7";
+  case KEY_EIGHT:
+    return "8";
+  case KEY_NINE:
+    return "9";
+  case KEY_SEMICOLON:
+    return ";";
+  case KEY_EQUAL:
+    return "=";
+  case KEY_A:
+    return "A";
+  case KEY_B:
+    return "B";
+  case KEY_C:
+    return "C";
+  case KEY_D:
+    return "D";
+  case KEY_E:
+    return "E";
+  case KEY_F:
+    return "F";
+  case KEY_G:
+    return "G";
+  case KEY_H:
+    return "H";
+  case KEY_I:
+    return "I";
+  case KEY_J:
+    return "J";
+  case KEY_K:
+    return "K";
+  case KEY_L:
+    return "L";
+  case KEY_M:
+    return "M";
+  case KEY_N:
+    return "N";
+  case KEY_O:
+    return "O";
+  case KEY_P:
+    return "P";
+  case KEY_Q:
+    return "Q";
+  case KEY_R:
+    return "R";
+  case KEY_S:
+    return "S";
+  case KEY_T:
+    return "T";
+  case KEY_U:
+    return "U";
+  case KEY_V:
+    return "V";
+  case KEY_W:
+    return "W";
+  case KEY_X:
+    return "X";
+  case KEY_Y:
+    return "Y";
+  case KEY_Z:
+    return "Z";
+  case KEY_SPACE:
+    return "Space";
+  case KEY_ESCAPE:
+    return "Escape";
+  case KEY_ENTER:
+    return "Enter";
+  case KEY_TAB:
+    return "Tab";
+  case KEY_BACKSPACE:
+    return "Backspace";
+  case KEY_INSERT:
+    return "Insert";
+  case KEY_DELETE:
+    return "Delete";
+  case KEY_RIGHT:
+    return "Right";
+  case KEY_LEFT:
+    return "Left";
+  case KEY_DOWN:
+    return "Down";
+  case KEY_UP:
+    return "Up";
+  case KEY_F1:
+    return "F1";
+  case KEY_F2:
+    return "F2";
+  case KEY_F3:
+    return "F3";
+  case KEY_F4:
+    return "F4";
+  case KEY_F5:
+    return "F5";
+  case KEY_F6:
+    return "F6";
+  case KEY_F7:
+    return "F7";
+  case KEY_F8:
+    return "F8";
+  case KEY_F9:
+    return "F9";
+  case KEY_F10:
+    return "F10";
+  case KEY_F11:
+    return "F11";
+  case KEY_F12:
+    return "F12";
+  case KEY_RIGHT_SHIFT:
+    return "Right Shift";
+  case KEY_LEFT_SHIFT:
+    return "Left Shift";
+  case KEY_RIGHT_CONTROL:
+    return "Right Ctrl";
+  case KEY_LEFT_CONTROL:
+    return "Left Ctrl";
+  case KEY_RIGHT_SUPER:
+    return "Right Super";
+  case KEY_LEFT_SUPER:
+    return "Left Super";
+  case KEY_RIGHT_ALT:
+    return "Right Alt";
+  case KEY_LEFT_ALT:
+    return "Left Alt";
+  case KEY_CAPS_LOCK:
+    return "Caps Lock";
+
+  default:
+    return "Unknown";
+  }
+}
+const char *getKeyName() {
+
+  int key = GetKeyPressed();
+  if (key != 0) {
+    lastKey = GetKeyNameCustom(key);
+  }
+  return lastKey;
+}
+
+void initCells(bool *cells) {
+  int startR = 25, startC = 25;
+
+  cells[(startR + 0) * C_CELLS + (startC + 10)] = true;
+  cells[(startR + 0) * C_CELLS + (startC + 9)] = true;
+
+  cells[(startR + 0) * C_CELLS + (startC + 8)] = true;
+  cells[(startR + 1) * C_CELLS + (startC + 8)] = true;
+
+  cells[(startR + 2) * C_CELLS + (startC + 8)] = true;
+
+  cells[(startR + 3) * C_CELLS + (startC + 9)] = true;
+}
+
+// void initCells(bool *cells) {
+//   int startR = 25, startC = 25;
+//
+//   int centerR = R_CELLS / 2, centerC = C_CELLS / 2;
+//   cells[(centerR - 1) * C_CELLS + centerC] = true;
+//   cells[centerR * C_CELLS + (centerC + 1)] = true;
+//   cells[(centerR + 1) * C_CELLS + (centerC - 1)] = true;
+//   cells[(centerR + 1) * C_CELLS + centerC] = true;
+//   cells[(centerR + 1) * C_CELLS + (centerC + 1)] = true;
+//   cells[(startR + 0) * C_CELLS + (startC + 10)] = true;
+//   cells[(startR + 0) * C_CELLS + (startC + 9)] = true;
+//
+//   cells[(startR + 0) * C_CELLS + (startC + 8)] = true;
+//   cells[(startR + 1) * C_CELLS + (startC + 8)] = true;
+//
+//   cells[(startR + 2) * C_CELLS + (startC + 8)] = true;
+//
+//   cells[(startR + 3) * C_CELLS + (startC + 9)] = true;
+//
+// }
+
+// void initCells(bool *cells) {
+//
+//   int startR = 10, startC = 10; // adjust placement
+//
+//   int gun[][2] = {
+//       {5, 1},  {5, 2},  {6, 1},  {6, 2}, // small block
+//       {5, 11}, {6, 11}, {7, 11}, {4, 12}, {8, 12}, {3, 13},
+//       {9, 13}, {3, 14}, {9, 14}, {6, 15}, {4, 16}, {8, 16},
+//       {5, 17}, {6, 17}, {7, 17}, {6, 18}, // left gun
+//       {3, 21}, {4, 21}, {5, 21}, {3, 22}, {4, 22}, {5, 22},
+//       {2, 23}, {6, 23}, {1, 25}, {2, 25}, {6, 25}, {7, 25}, // center bridge
+//       {3, 35}, {4, 35}, {3, 36}, {4, 36}                    // right block
+//   };
+//
+//   int n = sizeof(gun) / sizeof(gun[0]);
+//   for (int i = 0; i < n; i++) {
+//     int r = startR + gun[i][0];
+//     int c = startC + gun[i][1];
+//     cells[r * C_CELLS + c] = true;
+//   }
+// }

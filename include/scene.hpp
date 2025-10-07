@@ -4,20 +4,63 @@
 #include <cstdint>
 #include <vector>
 namespace AV {
-class Scene : public State {
-  Camera2D g_camera;
 
-  size_t hoveredEdgeIdx = SIZE_MAX;
-  size_t hoveredNodeIdx = SIZE_MAX;
+typedef struct {
+  // Define anchors
+  Vector2 main_window_anchor; // ANCHOR ID:1
+  Vector2 anchor02;           // ANCHOR ID:2
+  Vector2 anchor03;           // ANCHOR ID:3
+  Vector2 anchor04;           // ANCHOR ID:4
+
+  // Define controls variables
+  bool main_window_active;      // WindowBox: WindowBox000
+  int input_mode_toggle_active; // ToggleGroup: ToggleGroup001
+  bool DropdownBox007EditMode;
+  int DropdownBox007Active; // DropdownBox: DropdownBox007
+  bool WindowBox012Active;  // WindowBox: WindowBox012
+
+  // Define rectangles
+  Rectangle layoutRecs[17];
+
+  // Custom state variables (depend on development software)
+  // NOTE: This variables should be added manually if required
+  std::vector<Rectangle> adjacencyLayouts;
+  bool showAdjacencyPanel = true;
+  int hoveredAdjacencyElement = -1;
+  bool adjacencyIsNode = false;
+} BaseGuiState;
+
+class Scene : public State {
+
+  AlgorithmState algorithm_state;
+  Camera2D g_camera;
+  Vector2 mouse_world_pos;
+  Font *m_font;
+  BaseGuiState scene_gui_state;
+
+  BaseGuiState InitBaseGui(void);
+  void UpdateGuiLayout(void);
+  // void GuiAlgoViz(BaseGuiState *state);
+
+  static void Button006(); // Button: Button006 logic
+  static void Button008(); // Button: Button008 logic
+  static void Button009(); // Button: Button009 logic
+  static void Button010(); // Button: Button010 logic
+  static void Button015(); // Button: Button015 logic
 
   enum class InteractionMode {
     None = 0, // can hover and delete
     NodeSelect = 1,
-    NodeCreate = 2,
-    EdgeCreate = 3,
-    EdgeEdit = 4,
-  };
+    EdgeSelect = 2,
 
+    NodeCreate = 3,
+    NodeEdit = 4,
+
+    EdgeCreate = 5,
+    EdgeEdit = 6,
+  } m_input_mode;
+  int main_mode = 0; // 0=FREE, 1=NODE, 2=EDGE
+  int sub_mode = 0;  // 0=SELECT, 1=CREATE, 2=EDIT
   struct Edge {
     size_t from;
     size_t to;
@@ -33,9 +76,31 @@ class Scene : public State {
     std::vector<int> edges;
   };
 
+  Node *root;
   // allocate array of nodes
   std::vector<Node> nodes;
   std::vector<Edge> edges;
+
+  Node *selectedNode = nullptr;
+  Node *selectedNodeOrigin = nullptr;
+  size_t hoveredEdgeIdx = SIZE_MAX;
+  size_t hoveredNodeIdx = SIZE_MAX;
+
+public:
+  Scene(Font *);
+  void init() override;
+  void input() override;
+  void update_input_mode();
+  void draw(IVector2 *) override;
+  void drawUI(IVector2);
+  void update() override;
+  bool IsMouseHoveringEdge(const Vector2 &, const Vector2 &, const Vector2 &,
+                           float thickness = 5.0f);
+  void updateAdjacencyLayouts(const Rectangle &);
+
+  void drawAdjacencyRepresentation(const Rectangle &);
+  void drawAdjacencyMatrix(float, float, float, float, float);
+  void drawAdjacencyList(float, float, float, float, float);
 };
 
 }; // namespace AV

@@ -26,7 +26,7 @@ public:
 
   void shutdown();
   Font &getDefaultFont();
-
+  IVector2 *getResolution();
 #if defined(PLATFORM_WEB)
   void initWeb();
 #endif

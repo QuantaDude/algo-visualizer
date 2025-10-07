@@ -2,17 +2,16 @@
 #include "utils.hpp"
 namespace AV {
 typedef enum { MENU = 0, SCENE, QUIT } AppState;
-enum class AlgorithmState { Idle, Stepping, Running, Done };
-
+typedef enum AlgorithmState { Idle, Stepping, Running, Done } AlgorithmState;
+// enum class AlgorithmState {Idle, Stepping, Running, Done};
 class State {
   AppState state;
 
 public:
   virtual ~State() {}
-  virtual void Init() = 0;
-  virtual void Draw(IVector2 *) = 0;
-  virtual void Update() = 0;
-  virtual void Input() {};
-  void update(void);
+  virtual void init() = 0;
+  virtual void draw(IVector2 *) = 0;
+  virtual void update() = 0;
+  virtual void input() {};
 };
 } // namespace AV

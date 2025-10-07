@@ -16,13 +16,17 @@ EM_JS(void, toggle_console, (void), {
 });
 
 // Set canvas size to full window and return area
-EM_JS(int, canvas_set_size, (void), {
-  var canvas = document.getElementById("canvas");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  return window.innerWidth * window.innerHeight;
-});
+EM_JS(void, canvas_set_size, (int *width, int *height), {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const canvas = document.getElementById("canvas");
+  canvas.width = w;
+  canvas.height = h;
 
+  // Write values to the passed pointers (assuming 32-bit integers)
+  HEAP32[width >> 2] = w;
+  HEAP32[height >> 2] = h;
+});
 EM_JS(void, close_window, (void), { window.close(); });
 void close_window_wrapper() { close_window(); }
 // Print a float value
@@ -31,10 +35,12 @@ EM_JS(void, print_float, (float val), { Module.print(val); });
 // Print a UTF-8 string
 EM_JS(void, print, (const char *str), { Module.print(UTF8ToString(str)); });
 
-void call_canvas() { canvas_set_size(); }
+void set_canvas_size_wrapper(int *width, int *height) {
+  canvas_set_size(width, height);
+}
 
 void print_console(const char *str) { print(str); };
-
+void print_console_float(float val) { print_float(val); };
 em_str_callback_func onPreloadSuccess(const char *filename) {
   TRACELOG(LOG_INFO, "File loaded:", filename);
 }
@@ -85,3 +91,5 @@ void list_files() {
     print_console("Failed to list files\n");
   }
 }
+
+void toggle_console_wrapper() { toggle_console(); }

@@ -1,0 +1,30 @@
+#
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+#
+# Number of controls:     16
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 40 -1 -1
+a 001 anchor01 0 0 1
+a 002 anchor02 1544 0 1
+a 003 anchor03 1544 0 1
+a 004 anchor04 1552 200 1
+c 000 0 WindowBox000 0 0 360 960 1 Algorithm Visualizer
+c 001 9 ToggleGroup001 16 48 104 24 1 FREE;NODE;EDGE
+c 002 19 StatusBar003 120 936 120 24 1 pos
+c 003 19 StatusBar004 240 936 120 24 1 KEY PRESS
+c 004 19 StatusBar004 0 936 120 24 1 MODE
+c 005 4 Label005 16 24 120 24 1 MODE
+c 006 5 Button006 120 872 120 24 1 Reset
+c 007 11 DropdownBox007 96 272 152 32 1 Adjacency Matrix; Adjacency List;
+c 008 5 Button008 120 208 120 24 0 Delete
+c 009 5 Button009 120 144 120 24 1 Create
+c 010 5 Button010 120 176 120 24 0 Edit
+c 011 1 GroupBox011 8 40 192 128 2 Stack
+c 012 0 WindowBox012 0 0 208 368 3 Info
+c 013 2 Line013 40 184 120 16 3 
+c 014 1 GroupBox014 0 8 192 144 4 code
+c 015 5 Button015 120 832 120 24 1 Toggle Info Tab

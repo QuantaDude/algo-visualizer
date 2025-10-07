@@ -1,5 +1,7 @@
 #pragma once
+#include "menu.hpp"
 #include "raylib.h"
+#include "scene.hpp"
 #include "state.hpp"
 #include "utils.h"
 #include <string>
@@ -8,7 +10,6 @@
 #include <emscripten.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-
 #endif
 #include "app.hpp"
 #include <memory>
@@ -28,14 +29,15 @@ App *App::createInstance(int width, int height) {
 
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(width, height, "Algorithm Visualizer");
-
+    SetExitKey(KEY_NULL);
     if (IsWindowReady()) {
-      GuiLoadStyle(RESOURCES_PATH "style_amber.rgs");
+      GuiLoadStyle(RESOURCES_PATH "style_amber2.rgs");
 
       instance = new App(width, height, RESOURCES_PATH "font/alpha_beta.png");
       instance->setState(std::make_unique<Menu>("Algorithm Visualizer"));
+      instance->current_state->init();
 #if defined(PLATFORM_WEB)
-      call_canvas();
+      set_canvas_size_wrapper(&width, &height);
       emscripten_get_canvas_element_size("#canvas", &width, &height);
 #endif
     }
@@ -57,16 +59,19 @@ App &App::getInstance() {
 }
 Font &App::getDefaultFont() { return this->g_font; }
 
+IVector2 *App::getResolution() { return &resolution; }
+
 void App::setState(std::unique_ptr<AV::State> state) {
   current_state = std::move(state);
-  current_state->Init();
+  current_state->init();
 }
 void App::setState(AV::AppState new_state) { g_app_state = new_state; }
 
 void App::run(void) {
   if (App::g_app_state != AV::QUIT) {
-    current_state->Update();
-    current_state->Draw(&resolution);
+    current_state->input();
+    current_state->update();
+    current_state->draw(&resolution);
   } else {
     // this->setState(std::make_unique<Menu>("Algorithm Visualizer"));
     App::shutdown();
@@ -97,7 +102,7 @@ void App::runWrapper() { getInstance().run(); }
 #if defined(PLATFORM_WEB)
 void App::initWeb() {
   emscripten_get_canvas_element_size("#canvas", &resolution.x, &resolution.y);
-  current_state->Init();
+  current_state->init();
   GuiSetFont(g_font);
   std::string str = std::to_string(g_font.texture.id);
   print_console(str.c_str());

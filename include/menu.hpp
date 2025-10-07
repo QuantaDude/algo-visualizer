@@ -8,11 +8,16 @@ class Menu : public AV::State {
   bool startScene = false;
   Font &m_font;
 
+  bool cells[R_CELLS * C_CELLS];
+
 public:
   Menu(const char *);
-  void Init() override;
-  void Draw(IVector2 *) override;
-  void Update() override;
-  void Input() override;
+  void init() override;
+  void draw(IVector2 *) override;
+  void update() override;
+  void input() override;
   void DrawUI(IVector2);
+
+  void calcGOL(IVector2 *);
+  void drawCells(IVector2 *);
 };
