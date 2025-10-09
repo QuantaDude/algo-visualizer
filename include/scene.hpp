@@ -81,8 +81,8 @@ class Scene : public State {
   std::vector<Node> nodes;
   std::vector<Edge> edges;
 
-  Node *selectedNode = nullptr;
-  Node *selectedNodeOrigin = nullptr;
+  std::vector<Node>::iterator selected_node;
+  std::vector<Node>::iterator selected_edge_origin;
   size_t hoveredEdgeIdx = SIZE_MAX;
   size_t hoveredNodeIdx = SIZE_MAX;
 
