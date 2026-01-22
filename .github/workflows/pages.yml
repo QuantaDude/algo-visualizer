@@ -59,7 +59,7 @@ jobs:
           cp build_wasm/*.js dist/
           cp build_wasm/*.wasm dist/
           cp build_wasm/*.data dist/
-          rename dist/algo-visualizer.html dist/index.html
+          mv dist/algo-visualizer.html dist/index.html
 
 
       - name: Upload Pages artifact
