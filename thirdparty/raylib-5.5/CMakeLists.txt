@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.21)
 #this change avoid the warning that appear when we include raylib using Cmake fatch content 
 project(raylib)
 
