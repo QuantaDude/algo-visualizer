@@ -24,6 +24,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Get CMake 4.0
+        uses: lukka/get-cmake@latest
+          
+      - name: Verify CMake version
+        run: cmake --version
 
       - name: Install emsdk
         uses: mymindstorm/setup-emsdk@v14

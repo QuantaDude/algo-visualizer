@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 4.0)
 project(algo-visualizer)
 set(CMAKE_CXX_STANDARD 20)
 # Always generate compile_commands.json

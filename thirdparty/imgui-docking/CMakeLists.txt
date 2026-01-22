@@ -1,5 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
-
+cmake_minimum_required(VERSION 4.0)
 project(imgui)
 
 add_library(imgui)
