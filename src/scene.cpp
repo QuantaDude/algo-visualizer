@@ -121,7 +121,7 @@ void AV::Scene::drawUI(IVector2 resolution) {
     if (GuiButton(scene_gui_state.layoutRecs[8], "Delete"))
       Button008();
     if (GuiButton(scene_gui_state.layoutRecs[10], "Step"))
-      Button010();
+      StepButton(this);
 
     if (GuiButton(scene_gui_state.layoutRecs[6], "Reset"))
       Button006();
@@ -129,47 +129,75 @@ void AV::Scene::drawUI(IVector2 resolution) {
       Button015();
 
     if (GuiButton(scene_gui_state.layoutRecs[9], "Start"))
-      Button009();
+      StartButton(this);
     if (GuiDropdownBox(scene_gui_state.layoutRecs[7],
                        "Adjacency Matrix; Adjacency List;",
                        &scene_gui_state.DropdownBox007Active,
                        scene_gui_state.DropdownBox007EditMode))
       scene_gui_state.DropdownBox007EditMode =
           !scene_gui_state.DropdownBox007EditMode;
-  }
-  if (scene_gui_state.showAdjacencyPanel) {
-    Rectangle adjPanelRect = {
-        scene_gui_state.layoutRecs[7].x,
-        scene_gui_state.layoutRecs[7].y + scene_gui_state.layoutRecs[7].height +
-            10,
-        scene_gui_state.layoutRecs[7].width,
-        200 // Fixed height, you can make this dynamic
-    };
 
-    // Draw the panel background
-    GuiPanel(adjPanelRect, "Adjacency Representation");
+    if (scene_gui_state.showAdjacencyPanel) {
+      Rectangle adjPanelRect = {
+          scene_gui_state.layoutRecs[7].x,
+          scene_gui_state.layoutRecs[7].y +
+              scene_gui_state.layoutRecs[7].height + 100,
+          scene_gui_state.layoutRecs[7].width,
+          200 // Fixed height
+      };
 
-    // Update adjacency layouts based on current selection
-    updateAdjacencyLayouts(adjPanelRect);
+      Rectangle view = adjPanelRect;
+      Rectangle content = scene_gui_state.adjacencyContent;
 
-    // Draw adjacency list or matrix
-    drawAdjacencyRepresentation(adjPanelRect);
+      Rectangle panel = adjPanelRect; // immutable reference rect
+
+      GuiScrollPanel(panel, "Adjacency Representation", content,
+                     &scene_gui_state.adjacencyScroll, &view);
+
+      BeginScissorMode(view.x, view.y, view.width, view.height);
+
+      updateAdjacencyLayouts(adjPanelRect);
+
+      // Draw adjacency list or matrix
+
+      drawAdjacencyRepresentation(panel);
+
+      EndScissorMode();
+    }
   }
 
   if (scene_gui_state.WindowBox012Active) {
     scene_gui_state.WindowBox012Active =
         !GuiWindowBox(scene_gui_state.layoutRecs[12], "Info");
     GuiLine(scene_gui_state.layoutRecs[13], NULL);
-    GuiGroupBox(scene_gui_state.layoutRecs[11], "Stack");
+    Rectangle stackBox = scene_gui_state.layoutRecs[11];
+
+    Rectangle stackContent = {0, 0, stackBox.width - 20,
+                              (float)(dfs_stack.size() * 22 + 30)};
+
+    Rectangle panel = scene_gui_state.layoutRecs[11];
+    Rectangle view = panel;
+
+    GuiScrollPanel(panel, "Stack", stackContent, &scene_gui_state.stackScroll,
+                   &view);
+
+    BeginScissorMode(view.x, view.y, view.width, view.height);
+
+    drawDFSStack({panel.x - scene_gui_state.stackScroll.x,
+                  panel.y + scene_gui_state.stackScroll.y, panel.width,
+                  panel.height});
+
+    EndScissorMode();
+
     GuiGroupBox(scene_gui_state.layoutRecs[14], "code");
   }
 
   GuiUnlock();
 }
 void AV::Scene::update_input_mode() {
-  if (main_mode == 0) { // FREE
+  if (main_mode == 0) {
     m_input_mode = InteractionMode::None;
-  } else if (main_mode == 1) { // NODE
+  } else if (main_mode == 1) {
     switch (sub_mode) {
     case 0:
       m_input_mode = InteractionMode::NodeSelect;
@@ -201,7 +229,6 @@ void AV::Scene::input() {
 
   switch (m_input_mode) {
   case InteractionMode::NodeSelect:
-    // Handle node selection
 
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
       bool clickedOnNode = false;
@@ -355,7 +382,6 @@ void AV::Scene::input() {
         if (CheckCollisionPointRec(mouse_world_pos, nodes[i].collider)) {
 
           if (selected_edge_origin != nodes.begin() + i) {
-            // create new edge
             Edge newEdge;
             int originNodeIdx = (int)(selected_edge_origin - nodes.begin());
             newEdge.from = originNodeIdx;
@@ -487,6 +513,7 @@ void AV::Scene::input() {
         newNode.data = nodes.size();
 
         nodes.push_back(newNode);
+        root = &nodes[0];
         // selectedNode = &nodes.back();
         selected_node = nodes.end() - 1;
         selected_edge_origin = nodes.end();
@@ -574,11 +601,25 @@ void AV::Scene::update() {
         mouseWorld.y - selected_node->collider.height / 2;
   }
 }
-void AV::Scene::Button006() {} // Button: Button006 logic
-void AV::Scene::Button008() {} // Button: Button008 logic
-void AV::Scene::Button009() {} // Button: Button009 logic
-void AV::Scene::Button010() {} // Button: Button010 logic
-void AV::Scene::Button015() {} // Button: Button015 logic
+void AV::Scene::Button006() {}
+void AV::Scene::Button008() {}
+void AV::Scene::StartButton(AV::Scene *scene) {
+  while (!scene->dfs_stack.empty())
+    scene->dfs_stack.pop();
+
+  scene->visited.assign(scene->nodes.size(), false);
+
+  if (!scene->nodes.empty()) {
+    scene->dfs_stack.push({0, DFSPhase::ENTER}); // root
+  }
+
+  // step through the root node
+  if (!scene->nodes.empty()) {
+    scene->traverse();
+  }
+}
+void AV::Scene::StepButton(AV::Scene *scene) { scene->traverse(); }
+void AV::Scene::Button015() {}
 
 AV::BaseGuiState AV::Scene::InitBaseGui(void) {
   IVector2 resolution = *App::getInstance().getResolution();
@@ -748,14 +789,19 @@ void AV::Scene::updateAdjacencyLayouts(const Rectangle &panelRect) {
   float elementWidth = 40;
   float elementHeight = 25;
   float spacing = 5;
+  float contentHeight;
+  float contentWidth;
+  int cols = nodes.size() + 1;
+
+  contentWidth = cols * (elementWidth + spacing) + 20;
 
   if (scene_gui_state.DropdownBox007Active == 0) { // Adjacency Matrix
-    // Create matrix layout
+
     int n = nodes.size();
+    contentHeight = (n + 1) * (25 + 5) + 20;
     if (n == 0)
       return;
 
-    // Column headers (node indices)
     for (int i = 0; i <= n; i++) {
       for (int j = 0; j <= n; j++) {
         float x = startX + j * (elementWidth + spacing);
@@ -781,6 +827,7 @@ void AV::Scene::updateAdjacencyLayouts(const Rectangle &panelRect) {
       }
     }
   } else { // Adjacency List
+    contentHeight = nodes.size() * (25 + 5) + 20;
     // Create list layout
     for (size_t i = 0; i < nodes.size(); i++) {
       // Node label
@@ -797,6 +844,7 @@ void AV::Scene::updateAdjacencyLayouts(const Rectangle &panelRect) {
       }
     }
   }
+  scene_gui_state.adjacencyContent = {0, 0, contentWidth, contentHeight};
 }
 
 void AV::Scene::drawAdjacencyRepresentation(const Rectangle &panelRect) {
@@ -811,8 +859,8 @@ void AV::Scene::drawAdjacencyRepresentation(const Rectangle &panelRect) {
     }
   }
 
-  float startX = panelRect.x + 10;
-  float startY = panelRect.y + 30;
+  float startY = panelRect.y + 30 + scene_gui_state.adjacencyScroll.y;
+  float startX = panelRect.x + 10 + scene_gui_state.adjacencyScroll.x;
   float elementWidth = 40;
   float elementHeight = 25;
   float spacing = 5;
@@ -987,5 +1035,56 @@ void AV::Scene::drawAdjacencyList(float startX, float startY, float width,
         }
       }
     }
+  }
+}
+
+void AV::Scene::traverse() {
+  if (dfs_stack.empty())
+    return;
+
+  DFSFrame frame = dfs_stack.top();
+  dfs_stack.pop();
+
+  int current = frame.node;
+
+  if (frame.phase == DFSPhase::ENTER) {
+    if (visited[current])
+      return;
+
+    visited[current] = true;
+    hoveredNodeIdx = current;
+
+    dfs_stack.push({current, DFSPhase::EXIT});
+
+    // Push children in reverse order
+    for (int i = nodes[current].edges.size() - 1; i >= 0; --i) {
+      int neighbor = nodes[current].edges[i];
+      if (!visited[neighbor]) {
+        dfs_stack.push({neighbor, DFSPhase::ENTER});
+      }
+    }
+  } else {
+    hoveredNodeIdx = current;
+  }
+}
+void AV::Scene::drawDFSStack(Rectangle box) {
+  std::vector<DFSFrame> frames;
+
+  std::stack<DFSFrame> copy = dfs_stack;
+  while (!copy.empty()) {
+    frames.push_back(copy.top()); // top first
+    copy.pop();
+  }
+
+  float y = box.y + 25;
+
+  for (size_t i = 0; i < frames.size(); i++) {
+    const char *phase = frames[i].phase == DFSPhase::ENTER ? "ENTER" : "EXIT";
+
+    char label[64];
+    sprintf(label, "%s %d", phase, frames[i].node);
+
+    GuiLabel({box.x + 10, y, box.width - 20, 20}, label);
+    y += 22;
   }
 }

@@ -32,7 +32,7 @@ if(EMSCRIPTEN)
         -s USE_GLFW=3 \
         -s ASYNCIFY \
         -s WASM=1 \
-        -s USE_PTHREADS=1 \
+        -s USE_PTHREADS=0 \
         -pthread \
         -s ALLOW_MEMORY_GROWTH=1")
 

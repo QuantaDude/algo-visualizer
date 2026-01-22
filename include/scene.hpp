@@ -2,6 +2,8 @@
 #include "state.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <stack>
+#include <unordered_map>
 #include <vector>
 namespace AV {
 
@@ -28,10 +30,20 @@ typedef struct {
   bool showAdjacencyPanel = true;
   int hoveredAdjacencyElement = -1;
   bool adjacencyIsNode = false;
+
+  Vector2 stackScroll = {0, 0};
+  Vector2 adjacencyScroll = {0, 0};
+  Rectangle adjacencyContent = {0};
+
 } BaseGuiState;
 
 class Scene : public State {
+  enum class DFSPhase { ENTER, EXIT };
 
+  struct DFSFrame {
+    int node;
+    DFSPhase phase;
+  };
   AlgorithmState algorithm_state;
   Camera2D g_camera;
   Vector2 mouse_world_pos;
@@ -42,12 +54,11 @@ class Scene : public State {
   void UpdateGuiLayout(void);
   // void GuiAlgoViz(BaseGuiState *state);
 
-  static void Button006(); // Button: Button006 logic
-  static void Button008(); // Button: Button008 logic
-  static void Button009(); // Button: Button009 logic
-  static void Button010(); // Button: Button010 logic
-  static void Button015(); // Button: Button015 logic
-
+  static void Button006();
+  static void Button008();
+  static void StartButton(Scene *);
+  static void StepButton(Scene *);
+  static void Button015();
   enum class InteractionMode {
     None = 0, // can hover and delete
     NodeSelect = 1,
@@ -80,6 +91,8 @@ class Scene : public State {
   // allocate array of nodes
   std::vector<Node> nodes;
   std::vector<Edge> edges;
+  std::stack<DFSFrame> dfs_stack;
+  std::vector<bool> visited;
 
   std::vector<Node>::iterator selected_node;
   std::vector<Node>::iterator selected_edge_origin;
@@ -101,6 +114,11 @@ public:
   void drawAdjacencyRepresentation(const Rectangle &);
   void drawAdjacencyMatrix(float, float, float, float, float);
   void drawAdjacencyList(float, float, float, float, float);
+
+  void dfs();
+  void createStack();
+  void drawDFSStack(Rectangle);
+  void traverse();
 };
 
 }; // namespace AV

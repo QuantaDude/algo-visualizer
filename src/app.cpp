@@ -104,8 +104,8 @@ void App::initWeb() {
   emscripten_get_canvas_element_size("#canvas", &resolution.x, &resolution.y);
   current_state->init();
   GuiSetFont(g_font);
-  std::string str = std::to_string(g_font.texture.id);
-  print_console(str.c_str());
+  // std::string str = std::to_string(g_font.texture.id);
+  // print_console(str.c_str());
   emscripten_set_main_loop(runWrapper, 60, 1);
 }
 #endif
