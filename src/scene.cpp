@@ -472,7 +472,6 @@ void AV::Scene::input() {
 
     g_camera.target = mouse_world_pos;
 
-    // Uses log scaling to provide consistent zoom speed
     float scale = 0.2f * wheel;
 
     g_camera.zoom = Clamp(expf(logf(g_camera.zoom) + scale), 0.125f, 64.0f);
@@ -1072,7 +1071,7 @@ void AV::Scene::drawDFSStack(Rectangle box) {
 
   std::stack<DFSFrame> copy = dfs_stack;
   while (!copy.empty()) {
-    frames.push_back(copy.top()); // top first
+    frames.push_back(copy.top());
     copy.pop();
   }
 
