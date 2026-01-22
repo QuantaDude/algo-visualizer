@@ -1,0 +1,75 @@
+name: Build & Deploy app
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+
+      - name: Install emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Verify Emscripten
+        run: |
+          emcc -v
+          emcmake cmake --version
+
+
+      - name: Configure (Web Release)
+        run: |
+          emcmake cmake -B build_wasm \
+            -DCMAKE_BUILD_TYPE=Release
+
+
+      - name: Build
+        run: |
+          cmake --build build_wasm -j$(nproc)
+
+
+      - name: Prepare Pages files
+        run: |
+          mkdir -p dist
+          cp build_wasm/*.html dist/
+          cp build_wasm/*.js dist/
+          cp build_wasm/*.wasm dist/
+          cp build_wasm/*.data dist/
+
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
