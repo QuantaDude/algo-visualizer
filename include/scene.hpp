@@ -29,10 +29,13 @@ typedef struct {
   bool showAdjacencyPanel = true;
   int hoveredAdjacencyElement = -1;
   bool adjacencyIsNode = false;
-
+  bool resizingMain = false;
+  bool resizingInfo = false;
   Vector2 stackScroll = {0, 0};
   Vector2 adjacencyScroll = {0, 0};
   Rectangle adjacencyContent = {0};
+  Vector2 resizeStartMouse;
+  Rectangle resizeStartRect;
 
 } BaseGuiState;
 
@@ -113,6 +116,7 @@ public:
   void drawAdjacencyRepresentation(const Rectangle &);
   void drawAdjacencyMatrix(float, float, float, float, float);
   void drawAdjacencyList(float, float, float, float, float);
+  Rectangle GetResizeHandle(const Rectangle &);
 
   void dfs();
   void createStack();

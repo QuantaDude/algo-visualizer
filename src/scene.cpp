@@ -86,111 +86,191 @@ void AV::Scene::draw(IVector2 *resolution) {
 
   EndDrawing();
 }
+
 void AV::Scene::drawUI(IVector2 resolution) {
+  SetMouseCursor(MOUSE_CURSOR_DEFAULT);
 
   int prev_main_mode = main_mode;
+
   Vector2 mousePos = GetMousePosition();
   char posStr[64];
   snprintf(posStr, sizeof(posStr), "(%.0f, %.0f)", mousePos.x, mousePos.y);
-  // Draw controls
+
   if (scene_gui_state.DropdownBox007EditMode)
     GuiLock();
 
   if (scene_gui_state.main_window_active) {
+
     scene_gui_state.main_window_active =
         !GuiWindowBox(scene_gui_state.layoutRecs[0], "Algorithm Visualizer");
 
-    GuiToggleGroup(scene_gui_state.layoutRecs[1], "FREE;NODE;EDGE", &main_mode);
-    if (prev_main_mode != main_mode) {
-      sub_mode = 0; // Reset to SELECT when switching modes
+    Rectangle &main = scene_gui_state.layoutRecs[0];
+
+    // ---- Resize handle ----
+    Rectangle handle = GetResizeHandle(main);
+    DrawRectangleRec(handle, DARKGRAY);
+    DrawLine(handle.x, handle.y + handle.height, handle.x + handle.width,
+             handle.y, LIGHTGRAY);
+
+    if (CheckCollisionPointRec(GetMousePosition(), handle))
+      SetMouseCursor(MOUSE_CURSOR_RESIZE_NWSE);
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+        CheckCollisionPointRec(GetMousePosition(), handle)) {
+      scene_gui_state.resizingMain = true;
+      scene_gui_state.resizeStartMouse = GetMousePosition();
+      scene_gui_state.resizeStartRect = main;
     }
 
-    // Second toggle group - only show for NODE or EDGE modes
-    if (main_mode == 1 || main_mode == 2) {
+    if (scene_gui_state.resizingMain) {
+      if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        Vector2 delta = Vector2Subtract(GetMousePosition(),
+                                        scene_gui_state.resizeStartMouse);
+
+        main.width = Clamp(scene_gui_state.resizeStartRect.width + delta.x, 300,
+                           GetScreenWidth());
+        main.height = Clamp(scene_gui_state.resizeStartRect.height + delta.y,
+                            200, GetScreenHeight());
+      } else {
+        scene_gui_state.resizingMain = false;
+      }
+    }
+
+    // ---- Window content area ----
+    float padding = 10.0f;
+    float titleBarHeight = 24.0f;
+
+    Rectangle mainContent = {
+        main.x + padding, main.y + titleBarHeight + padding,
+        main.width - padding * 2, main.height - titleBarHeight - padding * 2};
+
+    BeginScissorMode(mainContent.x, mainContent.y, mainContent.width,
+                     mainContent.height);
+
+    // ---- Toggles ----
+    GuiToggleGroup(scene_gui_state.layoutRecs[1], "FREE;NODE;EDGE", &main_mode);
+    if (prev_main_mode != main_mode)
+      sub_mode = 0;
+
+    if (main_mode == 1 || main_mode == 2)
       GuiToggleGroup(scene_gui_state.layoutRecs[16], "SELECT;CREATE;EDIT",
                      &sub_mode);
-    }
 
-    // Update the actual enum
     update_input_mode();
-    GuiStatusBar(scene_gui_state.layoutRecs[2], posStr);
-    GuiStatusBar(scene_gui_state.layoutRecs[3], getKeyName());
-    GuiStatusBar(scene_gui_state.layoutRecs[4], "MODE");
-    GuiLabel(scene_gui_state.layoutRecs[5], "MODE");
 
-    if (GuiButton(scene_gui_state.layoutRecs[8], "Delete"))
-      Button008();
+    // ---- Buttons ----
+    if (GuiButton(scene_gui_state.layoutRecs[9], "Start"))
+      StartButton(this);
+
     if (GuiButton(scene_gui_state.layoutRecs[10], "Step"))
       StepButton(this);
 
-    if (GuiButton(scene_gui_state.layoutRecs[6], "Reset"))
-      Button006();
-    if (GuiButton(scene_gui_state.layoutRecs[15], "Toggle Info Tab"))
-      Button015();
+    if (GuiButton(scene_gui_state.layoutRecs[8], "Delete"))
+      Button008();
 
-    if (GuiButton(scene_gui_state.layoutRecs[9], "Start"))
-      StartButton(this);
     if (GuiDropdownBox(scene_gui_state.layoutRecs[7],
-                       "Adjacency Matrix; Adjacency List;",
+                       "Adjacency Matrix;Adjacency List;",
                        &scene_gui_state.DropdownBox007Active,
-                       scene_gui_state.DropdownBox007EditMode))
+                       scene_gui_state.DropdownBox007EditMode)) {
+
       scene_gui_state.DropdownBox007EditMode =
           !scene_gui_state.DropdownBox007EditMode;
+    }
 
+    // ---- Adjacency panel ----
     if (scene_gui_state.showAdjacencyPanel) {
-      Rectangle adjPanelRect = {
-          scene_gui_state.layoutRecs[7].x,
-          scene_gui_state.layoutRecs[7].y +
-              scene_gui_state.layoutRecs[7].height + 100,
-          scene_gui_state.layoutRecs[7].width,
-          200 // Fixed height
-      };
+
+      Rectangle dropdown = scene_gui_state.layoutRecs[7];
+
+      float adjTop = dropdown.y + dropdown.height + 10;
+      float adjBottom = scene_gui_state.layoutRecs[6].y - 10;
+
+      float maxAdjHeight = adjBottom - adjTop;
+
+      Rectangle adjPanelRect = {dropdown.x, adjTop, dropdown.width,
+                                Clamp(200.0f, 100.0f, maxAdjHeight)};
 
       Rectangle view = adjPanelRect;
-      Rectangle content = scene_gui_state.adjacencyContent;
 
-      Rectangle panel = adjPanelRect; // immutable reference rect
-
-      GuiScrollPanel(panel, "Adjacency Representation", content,
+      GuiScrollPanel(adjPanelRect, "Adjacency Representation",
+                     scene_gui_state.adjacencyContent,
                      &scene_gui_state.adjacencyScroll, &view);
 
       BeginScissorMode(view.x, view.y, view.width, view.height);
-
       updateAdjacencyLayouts(adjPanelRect);
-
-      // Draw adjacency list or matrix
-
-      drawAdjacencyRepresentation(panel);
-
+      drawAdjacencyRepresentation(adjPanelRect);
       EndScissorMode();
     }
-  }
 
+    // ---- Bottom buttons ----
+    if (GuiButton(scene_gui_state.layoutRecs[6], "Reset"))
+      Button006();
+
+    if (GuiButton(scene_gui_state.layoutRecs[15], "Toggle Info Tab"))
+      Button015();
+
+    EndScissorMode();
+  }
   if (scene_gui_state.WindowBox012Active) {
+
     scene_gui_state.WindowBox012Active =
         !GuiWindowBox(scene_gui_state.layoutRecs[12], "Info");
-    GuiLine(scene_gui_state.layoutRecs[13], NULL);
-    Rectangle stackBox = scene_gui_state.layoutRecs[11];
 
+    Rectangle &info = scene_gui_state.layoutRecs[12];
+
+    // Resize handle
+    Rectangle handleInfo = GetResizeHandle(info);
+    DrawRectangleRec(handleInfo, DARKGRAY);
+    DrawLine(handleInfo.x, handleInfo.y + handleInfo.height,
+             handleInfo.x + handleInfo.width, handleInfo.y, LIGHTGRAY);
+
+    if (CheckCollisionPointRec(GetMousePosition(), handleInfo))
+      SetMouseCursor(MOUSE_CURSOR_RESIZE_NWSE);
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+        CheckCollisionPointRec(GetMousePosition(), handleInfo)) {
+      scene_gui_state.resizingInfo = true;
+      scene_gui_state.resizeStartMouse = GetMousePosition();
+      scene_gui_state.resizeStartRect = info;
+    }
+
+    if (scene_gui_state.resizingInfo) {
+      if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        Vector2 delta = Vector2Subtract(GetMousePosition(),
+                                        scene_gui_state.resizeStartMouse);
+
+        info.width = Clamp(scene_gui_state.resizeStartRect.width + delta.x, 180,
+                           GetScreenWidth());
+        info.height = Clamp(scene_gui_state.resizeStartRect.height + delta.y,
+                            200, GetScreenHeight());
+      } else {
+        scene_gui_state.resizingInfo = false;
+      }
+    }
+
+    // Stack scroll panel
+    Rectangle stackBox = scene_gui_state.layoutRecs[11];
     Rectangle stackContent = {0, 0, stackBox.width - 20,
                               (float)(dfs_stack.size() * 22 + 30)};
 
-    Rectangle panel = scene_gui_state.layoutRecs[11];
-    Rectangle view = panel;
+    Rectangle view = stackBox;
 
-    GuiScrollPanel(panel, "Stack", stackContent, &scene_gui_state.stackScroll,
-                   &view);
+    GuiScrollPanel(stackBox, "Stack", stackContent,
+                   &scene_gui_state.stackScroll, &view);
 
     BeginScissorMode(view.x, view.y, view.width, view.height);
-
-    drawDFSStack({panel.x - scene_gui_state.stackScroll.x,
-                  panel.y + scene_gui_state.stackScroll.y, panel.width,
-                  panel.height});
-
+    drawDFSStack({stackBox.x - scene_gui_state.stackScroll.x,
+                  stackBox.y + scene_gui_state.stackScroll.y, stackBox.width,
+                  stackBox.height});
     EndScissorMode();
 
+    GuiLine(scene_gui_state.layoutRecs[13], nullptr);
     GuiGroupBox(scene_gui_state.layoutRecs[14], "code");
   }
+  // ---- Status bars (SCREEN-ANCHOR) ----
+  GuiStatusBar(scene_gui_state.layoutRecs[4], "MODE");
+  GuiStatusBar(scene_gui_state.layoutRecs[2], posStr);
+  GuiStatusBar(scene_gui_state.layoutRecs[3], getKeyName());
 
   GuiUnlock();
 }
@@ -226,7 +306,15 @@ void AV::Scene::update_input_mode() {
 
 void AV::Scene::input() {
   mouse_world_pos = GetScreenToWorld2D(GetMousePosition(), g_camera);
-
+  Rectangle &main = scene_gui_state.layoutRecs[0];
+  Rectangle &info = scene_gui_state.layoutRecs[12];
+  // Rectangle handle = GetResizeHandle(main);
+  if (CheckCollisionPointRec(GetMousePosition(), main) ||
+      scene_gui_state.resizingMain ||
+      CheckCollisionPointRec(GetMousePosition(), info) ||
+      scene_gui_state.resizingInfo) {
+    return;
+  }
   switch (m_input_mode) {
   case InteractionMode::NodeSelect:
 
@@ -677,18 +765,29 @@ AV::BaseGuiState AV::Scene::InitBaseGui(void) {
   state.layoutRecs[10] = (Rectangle){
       state.main_window_anchor.x + 120, state.main_window_anchor.y + 176,
       120 + scale.x, 24 + scale.y}; // Button: Button010
-  state.layoutRecs[11] =
-      (Rectangle){state.anchor02.x + 0, state.anchor02.y + 8, 192 + scale.x,
-                  128 + scale.y}; // GroupBox: GroupBox011
   state.layoutRecs[12] =
       (Rectangle){state.anchor03.x + 0, state.anchor03.y + 0, 208 + scale.x,
                   368 + scale.y}; // WindowBox: WindowBox012
-  state.layoutRecs[13] =
-      (Rectangle){state.anchor03.x + 40, state.anchor03.y + 184, 120 + scale.x,
-                  16 + scale.y}; // Line: Line013
-  state.layoutRecs[14] =
-      (Rectangle){state.anchor04.x + 0, state.anchor04.y + 8, 192 + scale.x,
-                  144 + scale.y}; // GroupBox: GroupBox014
+
+  Rectangle info = scene_gui_state.layoutRecs[12];
+  float padding = 10.0f;
+  float spacing = 8.0f;
+  float titleBarHeight = 24.0f; // raygui window header
+  float usableHeight = info.height - titleBarHeight - padding * 2 - spacing;
+  float stackHeight = usableHeight * 0.4f;
+  float codeHeight = usableHeight * 0.6f;
+
+  state.layoutRecs[11] = {info.x + padding, info.y + titleBarHeight + padding,
+                          info.width - padding * 2, stackHeight};
+
+  state.layoutRecs[13] = {info.x + padding,
+                          scene_gui_state.layoutRecs[11].y + stackHeight +
+                              spacing,
+                          info.width - padding * 2, 1};
+  state.layoutRecs[14] = {info.x + padding,
+                          scene_gui_state.layoutRecs[13].y + spacing,
+                          info.width - padding * 2, codeHeight};
+
   state.layoutRecs[15] = (Rectangle){state.main_window_anchor.x + 120,
                                      state.main_window_anchor.y + 832,
                                      120 + scale.x, 24}; // Button: Button015
@@ -702,82 +801,95 @@ AV::BaseGuiState AV::Scene::InitBaseGui(void) {
 }
 
 void AV::Scene::UpdateGuiLayout() {
+
   IVector2 resolution = *App::getInstance().getResolution();
-  Vector2 scale{(static_cast<float>(resolution.x) / 1920) * 100,
-                (static_cast<float>(resolution.y) / 1080) * 100};
-  // Update anchors based on current resolution
-  scene_gui_state.main_window_anchor = (Vector2){0, 0}; // Top-left
-  scene_gui_state.anchor02 = (Vector2){static_cast<float>(resolution.x - 320),
-                                       32}; // Right side, 32px from top
-  scene_gui_state.anchor03 =
-      (Vector2){static_cast<float>(resolution.x - 208 - scale.x),
-                0}; // Right side, top (using window width 208)
-  scene_gui_state.anchor04 = (Vector2){static_cast<float>(resolution.x - 320),
-                                       200}; // Right side, 200px from top
 
-  // Update all rectangles based on current anchors and resolution
-  scene_gui_state.layoutRecs[0] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 0,
-                  scene_gui_state.main_window_anchor.y + 0, 360 + scale.x,
-                  static_cast<float>(resolution.y)}; // Full height window
+  Rectangle &main = scene_gui_state.layoutRecs[0];
+  main.x = 0;
+  main.y = 0;
 
-  scene_gui_state.layoutRecs[1] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 16,
-      scene_gui_state.main_window_anchor.y + 48, 104 + (scale.x / 3), 24};
+  float uiScaleX = resolution.x / 1920.0f;
+  float uiScaleY = resolution.y / 1080.0f;
 
-  // Status bars at the bottom - stick to bottom
-  float statusBarY = static_cast<float>(resolution.y - 24); // 24px from bottom
-  scene_gui_state.layoutRecs[2] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 120 + scale.x / 3,
-                  statusBarY, 120 + scale.x / 3, 24}; // StatusBar003
-  scene_gui_state.layoutRecs[3] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 240 + scale.x / 3 * 2,
-                  statusBarY, 120 + scale.x / 3, 24}; // StatusBar004
-  scene_gui_state.layoutRecs[4] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 0, statusBarY,
-                  120 + scale.x / 3, 24}; // StatusBar004
+  float uiScale = fminf(uiScaleX, uiScaleY);
 
-  scene_gui_state.layoutRecs[5] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 16,
-                  scene_gui_state.main_window_anchor.y + 24, 120 + scale.x, 24};
-  scene_gui_state.layoutRecs[6] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 120,
-      scene_gui_state.main_window_anchor.y + 872, 120 + scale.x, 24};
-  scene_gui_state.layoutRecs[7] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 96,
-      scene_gui_state.main_window_anchor.y + 272, 152 + scale.x, 32};
-  scene_gui_state.layoutRecs[8] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 120,
-      scene_gui_state.main_window_anchor.y + 208, 120 + scale.x, 24};
-  scene_gui_state.layoutRecs[9] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 120,
-      scene_gui_state.main_window_anchor.y + 144, 120 + scale.x, 24};
-  scene_gui_state.layoutRecs[10] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 120,
-      scene_gui_state.main_window_anchor.y + 176, 120 + scale.x, 24};
-  scene_gui_state.layoutRecs[11] =
-      (Rectangle){scene_gui_state.anchor02.x + 0,
-                  scene_gui_state.anchor02.y + 8, 192 + scale.x, 128};
+  float padding = 6.0f * uiScale;
+  float titleBarHeight = 22.0f * uiScale;
+  float buttonHeight = 22.0f * uiScale;
+  float spacing = 6.0f * uiScale;
+  padding = Clamp(padding, 6.0f, 18.0f);
+  buttonHeight = Clamp(buttonHeight, 22.0f, 34.0f);
+  titleBarHeight = Clamp(titleBarHeight, 20.0f, 28.0f);
+  Rectangle mainContent = {main.x + padding, main.y + titleBarHeight + padding,
+                           main.width - padding * 2,
+                           main.height - titleBarHeight - padding * 2};
+  // ---- Button sizing ----
+  float buttonWidth = mainContent.width * 0.6f;
+  float buttonX = mainContent.x + (mainContent.width - buttonWidth) * 0.5f;
 
-  // Second window sticks to right edge
-  scene_gui_state.layoutRecs[12] = (Rectangle){
-      scene_gui_state.anchor03.x + 0, scene_gui_state.anchor03.y + 0,
-      208 + scale.x, 368 + scale.y}; // WindowBox012
+  float y = mainContent.y + 36;
 
-  scene_gui_state.layoutRecs[13] = (Rectangle){scene_gui_state.anchor03.x + 40,
-                                               scene_gui_state.anchor03.y + 184,
-                                               120 + scale.x, 16 + scale.y};
-  scene_gui_state.layoutRecs[14] =
-      (Rectangle){scene_gui_state.anchor04.x + 0,
-                  scene_gui_state.anchor04.y + 8, 192 + scale.x, 144 + scale.y};
-  scene_gui_state.layoutRecs[15] = (Rectangle){
-      scene_gui_state.main_window_anchor.x + 120,
-      scene_gui_state.main_window_anchor.y + 832, 120 + scale.x, 24};
+  // ---- Toggle groups ----
+  scene_gui_state.layoutRecs[1] = {mainContent.x, y, mainContent.width / 3,
+                                   buttonHeight};
+  y += 36;
 
-  scene_gui_state.layoutRecs[16] =
-      (Rectangle){scene_gui_state.main_window_anchor.x + 16,
-                  scene_gui_state.main_window_anchor.y + 72,
-                  104 + (scale.x / 3), 24}; // ToggleGroup: ToggleGroup002
+  scene_gui_state.layoutRecs[16] = {mainContent.x, y, mainContent.width / 3,
+                                    buttonHeight};
+  y += 44;
+
+  // ---- Start / Step / Delete ----
+  scene_gui_state.layoutRecs[9] = {buttonX, y, buttonWidth, buttonHeight};
+  y += buttonHeight + 6;
+
+  scene_gui_state.layoutRecs[10] = {buttonX, y, buttonWidth, buttonHeight};
+  y += buttonHeight + 6;
+
+  scene_gui_state.layoutRecs[8] = {buttonX, y, buttonWidth, buttonHeight};
+  y += buttonHeight + 16;
+
+  // ---- Dropdown ----
+  scene_gui_state.layoutRecs[7] = {buttonX, y, buttonWidth, 32};
+  y += 48;
+
+  // ---- Bottom buttons ----
+  float bottomY = mainContent.y + mainContent.height - (buttonHeight * 2 + 6);
+
+  scene_gui_state.layoutRecs[6] = {buttonX, bottomY, buttonWidth, buttonHeight};
+  scene_gui_state.layoutRecs[15] = {buttonX, bottomY + buttonHeight + 6,
+                                    buttonWidth, buttonHeight};
+
+  // ---- Status bars (screen bottom) ----
+  float statusBarY = resolution.y - 24;
+
+  scene_gui_state.layoutRecs[4] = {0, statusBarY, resolution.x * 0.33f, 24};
+  scene_gui_state.layoutRecs[2] = {resolution.x * 0.33f, statusBarY,
+                                   resolution.x * 0.34f, 24};
+  scene_gui_state.layoutRecs[3] = {resolution.x * 0.67f, statusBarY,
+                                   resolution.x * 0.33f, 24};
+
+  Rectangle &info = scene_gui_state.layoutRecs[12];
+
+  float screenW = resolution.x;
+
+  // Stick to right edge
+  info.x = screenW - info.width;
+  info.y = 0;
+  float usableHeight = info.height - titleBarHeight - padding * 2 - spacing;
+  float stackHeight = usableHeight * 0.4f;
+  float codeHeight = usableHeight * 0.6f;
+
+  scene_gui_state.layoutRecs[11] = {info.x + padding,
+                                    info.y + titleBarHeight + padding,
+                                    info.width - padding * 2, stackHeight};
+
+  scene_gui_state.layoutRecs[13] = {info.x + padding,
+                                    scene_gui_state.layoutRecs[11].y +
+                                        stackHeight + spacing,
+                                    info.width - padding * 2, 1};
+  scene_gui_state.layoutRecs[14] = {info.x + padding,
+                                    scene_gui_state.layoutRecs[13].y + spacing,
+                                    info.width - padding * 2, codeHeight};
 }
 
 void AV::Scene::updateAdjacencyLayouts(const Rectangle &panelRect) {
@@ -1086,4 +1198,8 @@ void AV::Scene::drawDFSStack(Rectangle box) {
     GuiLabel({box.x + 10, y, box.width - 20, 20}, label);
     y += 22;
   }
+}
+
+Rectangle AV::Scene::GetResizeHandle(const Rectangle &r) {
+  return {r.x + r.width - 12, r.y + r.height - 12, 12, 12};
 }
