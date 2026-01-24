@@ -34,9 +34,11 @@ App *App::createInstance(int width, int height) {
       GuiLoadStyle(RESOURCES_PATH "style_amber2.rgs");
 
       instance = new App(width, height, RESOURCES_PATH "font/alpha_beta.png");
-      instance->setState(std::make_unique<Menu>("Algorithm Visualizer"));
+      instance->setState(
+          std::make_unique<AV::Scene>(&instance->getDefaultFont()));
       instance->current_state->init();
 #if defined(PLATFORM_WEB)
+      toggle_console_wrapper();
       set_canvas_size_wrapper(&width, &height);
       emscripten_get_canvas_element_size("#canvas", &width, &height);
 #endif
@@ -47,7 +49,7 @@ App *App::createInstance(int width, int height) {
 
 App::App(int width, int height, const char *font)
     : resolution({.x = width, .y = height}), g_font(LoadFont(font)) {
-  g_app_state = AV::MENU;
+  g_app_state = AV::SCENE;
   // createInstance(width, height);
 }
 
@@ -63,7 +65,7 @@ IVector2 *App::getResolution() { return &resolution; }
 
 void App::setState(std::unique_ptr<AV::State> state) {
   current_state = std::move(state);
-  current_state->init();
+  // current_state->init();
 }
 void App::setState(AV::AppState new_state) { g_app_state = new_state; }
 
@@ -102,7 +104,7 @@ void App::runWrapper() { getInstance().run(); }
 #if defined(PLATFORM_WEB)
 void App::initWeb() {
   emscripten_get_canvas_element_size("#canvas", &resolution.x, &resolution.y);
-  current_state->init();
+  // current_state->init();
   GuiSetFont(g_font);
   // std::string str = std::to_string(g_font.texture.id);
   // print_console(str.c_str());
